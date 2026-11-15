@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discord Timestamps</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-canvas: #111214;
+      --bg-topbar: #16171a;
+      --bg-card: #191a1e;
+      --bg-elevated: #202227;
+      --bg-discord: #313338;
+      --bg-discord-dark: #2b2d31;
+      --border-hairline: #26272b;
+      --border-hover: #36383f;
+      --text-primary: #f2f3f5;
+      --text-secondary: #b5bac1;
+      --text-muted: #80848e;
+      --blurple: #5865f2;
+      --blurple-hover: #4752c4;
+      --blurple-soft: rgba(88, 101, 242, 0.14);
+      --emerald: #23a55a;
+      --emerald-soft: rgba(35, 165, 90, 0.15);
+      --spring: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      min-height: 100%;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .mono {
+      font-family: 'IBM Plex Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Parallax Dot Grid Background */
+    .dot-grid {
+      position: fixed;
+      inset: -40px;
+      pointer-events: none;
+      z-index: 0;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.065) 1px, transparent 1px);
+      background-size: 24px 24px;
+      transform: translate3d(var(--px, 0px), var(--py, 0px), 0);
+      transition: transform 0.25s ease-out;
+    }
+
+    /* 2% Film Grain Overlay */
+    .grain-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0.022;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* Particle Burst Canvas */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 60;
+    }
+
+    /* Flat 56px Top Utility Bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      height: 56px;
+      background-color: var(--bg-topbar);
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .topbar-inner {
+      max-width: 1160px;
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+
+    .brand-note {
+      font-size: 13px;
+      color: var(--text-muted);
+      padding-left: 10px;
+      border-left: 1px solid var(--border-hairline);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-clock {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      padding: 5px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-hairline);
+      border-radius: 6px;
+      margin-right: 4px;
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 11px;
+      background: transparent;
+      border: 1px solid var(--border-hairline);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, transform 0.12s ease;
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+    }
+
+    .btn-ghost:active {
+      transform: scale(0.97);
+    }
+
+    .btn-ghost.active {
+      background: var(--blurple-soft);
+      border-color: rgba(88, 101, 242, 0.45);
+      color: #a5b4fc;
+    }
+
+    .kbd {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-hairline);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    /* Main Container */
+    .container {
+      position: relative;
+      z-index: 10;
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 24px 20px 64px;
+    }
+
+    /* Collapsible Decode Drawer */
+    .decode-drawer {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      margin-bottom: 0;
+      transform: translateY(-6px);
+      transition: max-height 0.38s var(--spring), opacity 0.28s ease, margin-bottom 0.35s var(--spring), transform 0.35s var(--spring);
+    }
+
+    .decode-drawer.open {
+      max-height: 220px;
+      opacity: 1;
+      margin-bottom: 20px;
+      transform: translateY(0);
+    }
+
+    /* Matte Instrument Card with Cursor Specular Spotlight */
+    .card {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border-hairline);
+      border-radius: 12px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(14px);
+      animation: cardEntrance 0.55s var(--spring) forwards;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(
+        420px circle at var(--mx, -500px) var(--my, -500px),
+        rgba(88, 101, 242, 0.075),
+        transparent 65%
+      );
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    @keyframes cardEntrance {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .delay-1 { animation-delay: 0.04s; }
+    .delay-2 { animation-delay: 0.1s; }
+    .delay-3 { animation-delay: 0.16s; }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-subtitle {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    .card-body {
+      padding: 18px;
+    }
+
+    /* Grid Layout */
+    .workbench-grid {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .left-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Form Controls */
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-label {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    input[type="date"],
+    input[type="time"],
+    input[type="text"],
+    select {
+      width: 100%;
+      height: 38px;
+      padding: 0 11px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-hairline);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color-scheme: dark;
+      outline: none;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    select {
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--blurple);
+      box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.18);
+    }
+
+    /* Quick Nudge Pills */
+    .nudge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .nudge-btn {
+      height: 28px;
+      padding: 0 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .nudge-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+      background: #272930;
+    }
+
+    .nudge-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Inertia Timeline Scrubber */
+    .scrubber-wrap {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-hairline);
+    }
+
+    .scrubber-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .scrubber-track {
+      position: relative;
+      height: 42px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-hairline);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .scrubber-track:active {
+      cursor: grabbing;
+      border-color: var(--blurple);
+    }
+
+    .scrubber-ticks {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0 6px;
+      will-change: transform;
+    }
+
+    .tick {
+      width: 1px;
+      background: #2e3038;
+      flex-shrink: 0;
+    }
+
+    .tick.major {
+      height: 20px;
+      background: #4e5260;
+    }
+
+    .tick.minor {
+      height: 10px;
+    }
+
+    .scrubber-needle {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      left: 50%;
+      width: 2px;
+      background: var(--blurple);
+      border-radius: 2px;
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px rgba(88, 101, 242, 0.75);
+      pointer-events: none;
+    }
+
+    .scrubber-fade {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, var(--bg-canvas) 0%, transparent 18%, transparent 82%, var(--bg-canvas) 100%);
+      pointer-events: none;
+    }
+
+    /* Rolling Digit Unix Epoch Readout */
+    .epoch-box {
+      margin-top: 16px;
+      padding: 12px 14px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-hairline);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .epoch-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .digit-reel-row {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      overflow: hidden;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .digit-col {
+      display: inline-flex;
+      flex-direction: column;
+      height: 24px;
+      line-height: 24px;
+      transition: transform 0.32s var(--spring);
+    }
+
+    .digit-col span {
+      height: 24px;
+      display: block;
+      text-align: center;
+    }
+
+    /* Format Rows Table */
+    .format-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .format-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 145px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-hairline);
+      cursor: pointer;
+      overflow: hidden;
+      transition: background 0.16s ease;
+    }
+
+    .format-row:last-child {
+      border-bottom: none;
+    }
+
+    .format-row:hover {
+      background: rgba(255, 255, 255, 0.022);
+    }
+
+    /* Directional Light Sweep on Copy */
+    .format-row::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(35, 165, 90, 0.22), transparent);
+      transform: translateX(-100%);
+      pointer-events: none;
+    }
+
+    .format-row.sweep::after {
+      animation: rowSweep 0.55s var(--spring);
+    }
+
+    @keyframes rowSweep {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .format-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .format-preview {
+      font-size: 13.5px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .format-tag-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag-pill {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: #c9cdff;
+      background: rgba(88, 101, 242, 0.12);
+      border: 1px solid rgba(88, 101, 242, 0.28);
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.18s ease;
+    }
+
+    .format-row:hover .tag-pill {
+      background: rgba(88, 101, 242, 0.2);
+      border-color: rgba(88, 101, 242, 0.5);
+    }
+
+    .copy-badge {
+      min-width: 62px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      transition: all 0.18s ease;
+    }
+
+    .format-row.copied .copy-badge {
+      background: var(--emerald-soft);
+      border-color: rgba(35, 165, 90, 0.45);
+      color: #4ade80;
+    }
+
+    /* Discord Chat Preview */
+    .scenario-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      height: 26px;
+      padding: 0 9px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-btn.active {
+      background: var(--bg-elevated);
+      border-color: var(--border-hairline);
+      color: var(--text-primary);
+    }
+
+    .discord-window {
+      background: var(--bg-discord);
+      border: 1px solid #3f4147;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .discord-channel-bar {
+      height: 38px;
+      padding: 0 14px;
+      background: var(--bg-discord-dark);
+      border-bottom: 1px solid #232428;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #f2f3f5;
+    }
+
+    .discord-hash {
+      color: #80848e;
+      font-size: 17px;
+      font-weight: 500;
+    }
+
+    .discord-message {
+      padding: 16px 14px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .discord-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #5865f2, #3b44a8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .discord-author-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .discord-author {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f2f3f5;
+    }
+
+    .discord-bot-tag {
+      font-size: 10px;
+      font-weight: 600;
+      background: #5865f2;
+      color: #fff;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    .discord-msg-time {
+      font-size: 11.5px;
+      color: #949ba4;
+    }
+
+    .discord-text {
+      font-size: 14px;
+      line-height: 1.48;
+      color: #dbdee1;
+      word-break: break-word;
+    }
+
+    /* Interactive Discord Timestamp Pill + Spring Tooltip */
+    .discord-ts-pill {
+      position: relative;
+      display: inline-block;
+      padding: 0 4px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #f2f3f5;
+      cursor: default;
+      transition: background 0.14s ease;
+    }
+
+    .discord-ts-pill:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .discord-tooltip {
+      position: absolute;
+      bottom: calc(100% + 7px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px) scale(0.96);
+      background: #111214;
+      color: #f2f3f5;
+      border: 1px solid #26272b;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease, transform 0.22s var(--spring);
+      z-index: 20;
+    }
+
+    .discord-ts-pill:hover .discord-tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+
+    .custom-msg-input {
+      margin-top: 10px;
+      display: none;
+    }
+
+    .custom-msg-input.visible {
+      display: block;
+    }
+
+    /* Decoder Layout */
+    .decode-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .decode-result {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-hairline);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 960px) {
+      .workbench-grid {
+        grid-template-columns: 1fr;
+      }
+      .brand-note {
+        display: none;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .format-row {
+        grid-template-columns: 1fr auto;
+      }
+      .format-name {
+        grid-column: 1 / -1;
+      }
+      .live-clock {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dot-grid" id="dot-grid"></div>
+  <div class="grain-overlay"></div>
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- Flat 56px Top Utility Bar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5865f2" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"></circle>
+          <polyline points="12 7 12 12 15.5 14"></polyline>
+        </svg>
+        <span class="brand-title">Discord Timestamps</span>
+        <span class="brand-note">Generate &lt;t:&gt; tags for Discord</span>
+      </div>
+
+      <div class="topbar-actions">
+        <span class="live-clock mono" id="live-clock">--:--:--</span>
+        <button type="button" class="btn-ghost" id="toggle-decode-btn">
+          <span>Decode</span>
+          <span class="kbd">D</span>
+        </button>
+        <button type="button" class="btn-ghost" id="reset-now-btn">
+          <span>Reset to now</span>
+          <span class="kbd">N</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Collapsible Reverse Tag Decoder -->
+    <section class="decode-drawer" id="decode-drawer">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Decode tag</span>
+          <span class="card-subtitle">Paste any &lt;t:unix:style&gt; tag or raw epoch seconds</span>
+        </div>
+        <div class="card-body">
+          <div class="decode-row">
+            <input type="text" id="decode-input" placeholder="<t:1794774780:F> or 1794774780" />
+            <button type="button" class="btn-ghost" id="decode-apply-btn" style="height:38px; padding:0 14px; color:#f2f3f5;">Load into generator</button>
+          </div>
+          <div class="decode-result" id="decode-output">
+            <span class="mono" style="color: var(--text-muted);">Waiting for tag or Unix epoch...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="workbench-grid">
+      <!-- Left Column: Controls & Discord Preview -->
+      <div class="left-stack">
+        <!-- Date & Time Workbench Card -->
+        <section class="card delay-1">
+          <div class="card-header">
+            <span class="card-title">Date &amp; time</span>
+            <span class="card-subtitle" id="tz-offset-badge">UTC</span>
+          </div>
+          <div class="card-body">
+            <div class="field-grid">
+              <div class="field">
+                <label class="field-label" for="date-input">Date</label>
+                <input type="date" id="date-input" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="time-input">Time</label>
+                <input type="time" id="time-input" step="1" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="tz-select">Timezone</label>
+              <select id="tz-select"></select>
+            </div>
+
+            <div class="nudge-row">
+              <button type="button" class="nudge-btn" data-delta="-3600">-1h</button>
+              <button type="button" class="nudge-btn" data-delta="-900">-15m</button>
+              <button type="button" class="nudge-btn" data-delta="900">+15m</button>
+              <button type="button" class="nudge-btn" data-delta="3600">+1h</button>
+              <button type="button" class="nudge-btn" data-delta="86400">+1d</button>
+              <button type="button" class="nudge-btn" data-delta="604800">+7d</button>
+            </div>
+
+            <!-- Inertia Timeline Scrubber -->
+            <div class="scrubber-wrap">
+              <div class="scrubber-meta">
+                <span>Drag timeline to scrub</span>
+                <span>Hold Shift for fine control</span>
+              </div>
+              <div class="scrubber-track" id="scrubber-track">
+                <div class="scrubber-ticks" id="scrubber-ticks"></div>
+                <div class="scrubber-fade"></div>
+                <div class="scrubber-needle"></div>
+              </div>
+            </div>
+
+            <!-- Rolling Digit Unix Epoch Readout -->
+            <div class="epoch-box">
+              <div>
+                <div class="epoch-label">Unix timestamp</div>
+                <div class="digit-reel-row" id="digit-reels"></div>
+              </div>
+              <button type="button" class="btn-ghost" id="copy-unix-btn">Copy epoch</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Live Discord Message Preview -->
+        <section class="card delay-3">
+          <div class="card-header">
+            <span class="card-title">Message preview</span>
+            <div class="scenario-tabs" id="scenario-tabs">
+              <button type="button" class="tab-btn active" data-scene="event">Event</button>
+              <button type="button" class="tab-btn" data-scene="maint">Downtime</button>
+              <button type="button" class="tab-btn" data-scene="stream">Stream</button>
+              <button type="button" class="tab-btn" data-scene="custom">Custom</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="discord-window">
+              <div class="discord-channel-bar">
+                <span class="discord-hash">#</span>
+                <span>announcements</span>
+              </div>
+              <div class="discord-message">
+                <div class="discord-avatar">DT</div>
+                <div style="min-width:0; flex:1;">
+                  <div class="discord-author-row">
+                    <span class="discord-author">Server Bot</span>
+                    <span class="discord-bot-tag">APP</span>
+                    <span class="discord-msg-time">Today at 3:30 PM</span>
+                  </div>
+                  <div class="discord-text" id="discord-preview-body"></div>
+                </div>
+              </div>
+            </div>
+            <div class="custom-msg-input" id="custom-msg-wrap">
+              <input type="text" id="custom-msg-input" value="Doors open at {F} ({R}) — don't be late!" placeholder="Use {t}, {T}, {d}, {D}, {f}, {F}, {R}" />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column: All 8 Discord Formats -->
+      <section class="card delay-2">
+        <div class="card-header">
+          <span class="card-title">Formats</span>
+          <span class="card-subtitle">Click any row or press 1–8 to copy</span>
+        </div>
+        <div class="format-list" id="format-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const FORMATS = [
+        { key: "default", label: "Default", suffix: "" },
+        { key: "t", label: "Short time", suffix: ":t" },
+        { key: "T", label: "Long time", suffix: ":T" },
+        { key: "d", label: "Short date", suffix: ":d" },
+        { key: "D", label: "Long date", suffix: ":D" },
+        { key: "f", label: "Short date/time", suffix: ":f" },
+        { key: "F", label: "Long date/time", suffix: ":F" },
+        { key: "R", label: "Relative time", suffix: ":R" },
+      ];
+
+      const TIMEZONES = [
+        { label: "Local browser timezone", value: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        { label: "UTC (Coordinated Universal Time)", value: "UTC" },
+        { label: "America/New_York (ET)", value: "America/New_York" },
+        { label: "America/Chicago (CT)", value: "America/Chicago" },
+        { label: "America/Denver (MT)", value: "America/Denver" },
+        { label: "America/Los_Angeles (PT)", value: "America/Los_Angeles" },
+        { label: "Europe/London (GMT/BST)", value: "Europe/London" },
+        { label: "Europe/Berlin (CET/CEST)", value: "Europe/Berlin" },
+        { label: "Asia/Tokyo (JST)", value: "Asia/Tokyo" },
+        { label: "Australia/Sydney (AEST/AEDT)", value: "Australia/Sydney" },
+      ];
+
+      const SCENARIOS = {
+        event: "Community game night starts {F} ({R}). Grab your role in #roles before kickoff!",
+        maint: "Scheduled maintenance begins {f} and wraps up around {t} ({R}).",
+        stream: "Going live on Twitch on {D} at {T} — catch the countdown {R}.",
+      };
+
+      let targetUnix = Math.floor(Date.now() / 1000);
+      let activeScene = "event";
+      let decodedCandidateUnix = null;
+
+      // DOM References
+      const dateInput = document.getElementById("date-input");
+      const timeInput = document.getElementById("time-input");
+      const tzSelect = document.getElementById("tz-select");
+      const tzBadge = document.getElementById("tz-offset-badge");
+      const formatList = document.getElementById("format-list");
+      const digitReels = document.getElementById("digit-reels");
+      const previewBody = document.getElementById("discord-preview-body");
+      const customWrap = document.getElementById("custom-msg-wrap");
+      const customInput = document.getElementById("custom-msg-input");
+      const liveClock = document.getElementById("live-clock");
+
+      // Populate Timezone Dropdown
+      TIMEZONES.forEach((tz, idx) => {
+        const opt = document.createElement("option");
+        opt.value = tz.value;
+        opt.textContent = idx === 0 ? `Local (${tz.value})` : tz.label;
+        tzSelect.appendChild(opt);
+      });
+
+      // Accurate Timezone Wall-Clock <-> Unix Helpers
+      function getWallParts(unixSec, timeZone) {
+        const d = new Date(unixSec * 1000);
+        const parts = new Intl.DateTimeFormat("en-CA", {
+          timeZone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).formatToParts(d);
+
+        const map = {};
+        for (const p of parts) map[p.type] = p.value;
+        const hour = map.hour === "24" ? "00" : map.hour;
+        return {
+          dateStr: `${map.year}-${map.month}-${map.day}`,
+          timeStr: `${hour}:${map.minute}:${map.second}`,
+        };
+      }
+
+      function wallToUnix(dateStr, timeStr, timeZone) {
+        const [y, m, d] = dateStr.split("-").map(Number);
+        const [hh, mm, ss = 0] = timeStr.split(":").map(Number);
+        if (!y || !m || !d) return targetUnix;
+
+        let guess = Math.floor(Date.UTC(y, m - 1, d, hh || 0, mm || 0, ss || 0) / 1000);
+        for (let i = 0; i < 3; i++) {
+          const wp = getWallParts(guess, timeZone);
+          const [wy, wm, wd] = wp.dateStr.split("-").map(Number);
+          const [wh, wmin, ws] = wp.timeStr.split(":").map(Number);
+          const actualWallAsUtc = Math.floor(Date.UTC(wy, wm - 1, wd, wh, wmin, ws) / 1000);
+          const desiredWallAsUtc = Math.floor(Date.UTC(y, m - 1, d, hh || 0, mm || 0, ss || 0) / 1000);
+          const diff = desiredWallAsUtc - actualWallAsUtc;
+          if (diff === 0) break;
+          guess += diff;
+        }
+        return guess;
+      }
+
+      // Format Renderers
+      function formatRelative(unixSec) {
+        const diff = unixSec - Math.floor(Date.now() / 1000);
+        const abs = Math.abs(diff);
+        const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+        if (abs < 60) return rtf.format(diff, "second");
+        if (abs < 3600) return rtf.format(Math.round(diff / 60), "minute");
+        if (abs < 86400) return rtf.format(Math.round(diff / 3600), "hour");
+        if (abs < 2592000) return rtf.format(Math.round(diff / 86400), "day");
+        if (abs < 31536000) return rtf.format(Math.round(diff / 2592000), "month");
+        return rtf.format(Math.round(diff / 31536000), "year");
+      }
+
+      function renderFormattedValue(unixSec, key) {
+        const d = new Date(unixSec * 1000);
+        switch (key) {
+          case "t":
+            return new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(d);
+          case "T":
+            return new Intl.DateTimeFormat("en-US", { timeStyle: "medium" }).format(d);
+          case "d":
+            return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+          case "D":
+            return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(d);
+          case "f":
+          case "default":
+            return `${new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(d)} ${new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(d)}`;
+          case "F":
+            return `${new Intl.DateTimeFormat("en-US", { dateStyle: "full" }).format(d)} ${new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(d)}`;
+          case "R":
+            return formatRelative(unixSec);
+          default:
+            return "";
+        }
+      }
+
+      // Build Format Rows Once
+      FORMATS.forEach((fmt, idx) => {
+        const row = document.createElement("div");
+        row.className = "format-row";
+        row.dataset.index = idx;
+        row.innerHTML = `
+          <div class="format-name">
+            <span class="kbd">${idx + 1}</span>
+            <span>${fmt.label}</span>
+          </div>
+          <div class="format-preview" id="prev-${fmt.key}"></div>
+          <div class="format-tag-wrap">
+            <code class="tag-pill" id="tag-${fmt.key}"></code>
+            <span class="copy-badge" id="badge-${fmt.key}">Copy</span>
+          </div>
+        `;
+        row.addEventListener("click", (e) => {
+          copyFormat(idx, e.clientX, e.clientY);
+        });
+        formatList.appendChild(row);
+      });
+
+      // Rolling Digit Reel Updater
+      function renderRollingDigits(unixSec) {
+        const str = String(unixSec);
+        while (digitReels.children.length < str.length) {
+          const col = document.createElement("div");
+          col.className = "digit-col";
+          for (let n = 0; n <= 9; n++) {
+            const sp = document.createElement("span");
+            sp.textContent = n;
+            col.appendChild(sp);
+          }
+          const minus = document.createElement("span");
+          minus.textContent = "-";
+          col.appendChild(minus);
+          digitReels.appendChild(col);
+        }
+        while (digitReels.children.length > str.length) {
+          digitReels.removeChild(digitReels.lastChild);
+        }
+        [...str].forEach((ch, i) => {
+          const col = digitReels.children[i];
+          const idx = ch === "-" ? 10 : Number(ch);
+          col.style.transform = `translateY(-${idx * 24}px)`;
+        });
+      }
+
+      // Sync UI from targetUnix
+      function syncAll(updateInputs = true) {
+        const tz = tzSelect.value;
+        if (updateInputs) {
+          const wp = getWallParts(targetUnix, tz);
+          dateInput.value = wp.dateStr;
+          timeInput.value = wp.timeStr;
+        }
+
+        const tzShort = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" })
+          .formatToParts(new Date(targetUnix * 1000))
+          .find((p) => p.type === "timeZoneName")?.value || tz;
+        tzBadge.textContent = tzShort;
+
+        renderRollingDigits(targetUnix);
+
+        FORMATS.forEach((fmt) => {
+          document.getElementById(`prev-${fmt.key}`).textContent = renderFormattedValue(targetUnix, fmt.key);
+          document.getElementById(`tag-${fmt.key}`).textContent = `<t:${targetUnix}${fmt.suffix}>`;
+        });
+
+        renderDiscordPreview();
+      }
+
+      function renderDiscordPreview() {
+        const template = activeScene === "custom" ? customInput.value : SCENARIOS[activeScene];
+        const fullTooltip = renderFormattedValue(targetUnix, "F");
+        const escaped = template
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+        const html = escaped.replace(/\{([tTdDfFR])\}/g, (_, code) => {
+          const rendered = renderFormattedValue(targetUnix, code);
+          return `<span class="discord-ts-pill">${rendered}<span class="discord-tooltip">${fullTooltip}</span></span>`;
+        });
+
+        previewBody.innerHTML = html;
+      }
+
+      // Copy & Micro-Particle Burst
+      function copyFormat(index, clientX, clientY) {
+        const fmt = FORMATS[index];
+        if (!fmt) return;
+        const tag = `<t:${targetUnix}${fmt.suffix}>`;
+        navigator.clipboard?.writeText(tag);
+
+        const row = formatList.children[index];
+        const badge = document.getElementById(`badge-${fmt.key}`);
+        row.classList.remove("sweep");
+        void row.offsetWidth;
+        row.classList.add("sweep", "copied");
+        badge.textContent = "Copied";
+
+        const rect = row.getBoundingClientRect();
+        spawnBurst(clientX || rect.right - 60, clientY || rect.top + rect.height / 2);
+
+        clearTimeout(row._timer);
+        row._timer = setTimeout(() => {
+          row.classList.remove("copied");
+          badge.textContent = "Copy";
+        }, 1400);
+      }
+
+      document.getElementById("copy-unix-btn").addEventListener("click", (e) => {
+        navigator.clipboard?.writeText(String(targetUnix));
+        const btn = e.currentTarget;
+        btn.textContent = "Copied";
+        spawnBurst(e.clientX, e.clientY);
+        setTimeout(() => {
+          btn.textContent = "Copy epoch";
+        }, 1300);
+      });
+
+      // Input Listeners
+      dateInput.addEventListener("change", () => {
+        targetUnix = wallToUnix(dateInput.value, timeInput.value || "00:00:00", tzSelect.value);
+        syncAll(false);
+      });
+
+      timeInput.addEventListener("change", () => {
+        targetUnix = wallToUnix(dateInput.value, timeInput.value || "00:00:00", tzSelect.value);
+        syncAll(false);
+      });
+
+      tzSelect.addEventListener("change", () => {
+        syncAll(true);
+      });
+
+      document.querySelectorAll(".nudge-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          targetUnix += Number(btn.dataset.delta);
+          syncAll(true);
+        });
+      });
+
+      document.getElementById("reset-now-btn").addEventListener("click", () => {
+        targetUnix = Math.floor(Date.now() / 1000);
+        syncAll(true);
+      });
+
+      // Scenario Tabs
+      document.getElementById("scenario-tabs").addEventListener("click", (e) => {
+        const btn = e.target.closest(".tab-btn");
+        if (!btn) return;
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeScene = btn.dataset.scene;
+        customWrap.classList.toggle("visible", activeScene === "custom");
+        renderDiscordPreview();
+      });
+
+      customInput.addEventListener("input", renderDiscordPreview);
+
+      // Decoder Drawer
+      const decodeDrawer = document.getElementById("decode-drawer");
+      const toggleDecodeBtn = document.getElementById("toggle-decode-btn");
+      const decodeInput = document.getElementById("decode-input");
+      const decodeOutput = document.getElementById("decode-output");
+
+      function toggleDecoder() {
+        const open = decodeDrawer.classList.toggle("open");
+        toggleDecodeBtn.classList.toggle("active", open);
+        if (open) setTimeout(() => decodeInput.focus(), 120);
+      }
+
+      toggleDecodeBtn.addEventListener("click", toggleDecoder);
+
+      decodeInput.addEventListener("input", () => {
+        const raw = decodeInput.value.trim();
+        if (!raw) {
+          decodedCandidateUnix = null;
+          decodeOutput.innerHTML = `<span class="mono" style="color: var(--text-muted);">Waiting for tag or Unix epoch...</span>`;
+          return;
+        }
+        const m = raw.match(/^<t:(-?\d+)(?::([tTdDfFR]))?>$/);
+        let val = m ? Number(m[1]) : Number(raw);
+        if (!Number.isFinite(val)) {
+          decodedCandidateUnix = null;
+          decodeOutput.innerHTML = `<span style="color:#f87171;">Unrecognized format</span>`;
+          return;
+        }
+        if (Math.abs(val) >= 1e11) val = Math.floor(val / 1000);
+        decodedCandidateUnix = Math.floor(val);
+        const full = renderFormattedValue(decodedCandidateUnix, "F");
+        const rel = renderFormattedValue(decodedCandidateUnix, "R");
+        decodeOutput.innerHTML = `
+          <span><strong>${full}</strong> <span style="color:var(--text-muted);">(${rel})</span></span>
+          <span class="mono" style="color:var(--text-secondary);">Epoch: ${decodedCandidateUnix}</span>
+        `;
+      });
+
+      document.getElementById("decode-apply-btn").addEventListener("click", () => {
+        if (decodedCandidateUnix !== null) {
+          targetUnix = decodedCandidateUnix;
+          syncAll(true);
+        }
+      });
+
+      // Inertia Timeline Scrubber
+      const scrubberTrack = document.getElementById("scrubber-track");
+      const scrubberTicks = document.getElementById("scrubber-ticks");
+      for (let i = 0; i < 48; i++) {
+        const tick = document.createElement("div");
+        tick.className = `tick ${i % 4 === 0 ? "major" : "minor"}`;
+        scrubberTicks.appendChild(tick);
+      }
+
+      let isDragging = false;
+      let lastX = 0;
+      let velocity = 0;
+      let tickOffset = 0;
+      let fractionalSec = 0;
+
+      scrubberTrack.addEventListener("pointerdown", (e) => {
+        isDragging = true;
+        lastX = e.clientX;
+        velocity = 0;
+        scrubberTrack.setPointerCapture(e.pointerId);
+      });
+
+      scrubberTrack.addEventListener("pointermove", (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - lastX;
+        lastX = e.clientX;
+        const scale = e.shiftKey ? 5 : 45; // seconds per pixel
+        velocity = dx * scale;
+        applyScrubDelta(dx, scale);
+      });
+
+      scrubberTrack.addEventListener("pointerup", () => {
+        isDragging = false;
+      });
+
+      scrubberTrack.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const scale = e.shiftKey ? 10 : 60;
+        const dx = -(e.deltaY || e.deltaX) * 0.25;
+        velocity = dx * scale * 0.4;
+        applyScrubDelta(dx, scale);
+      }, { passive: false });
+
+      function applyScrubDelta(dx, scale) {
+        tickOffset = (tickOffset + dx) % 16;
+        scrubberTicks.style.transform = `translateX(${tickOffset}px)`;
+        fractionalSec += dx * scale;
+        if (Math.abs(fractionalSec) >= 1) {
+          const whole = Math.trunc(fractionalSec);
+          fractionalSec -= whole;
+          targetUnix += whole;
+          syncAll(true);
+        }
+      }
+
+      function inertiaLoop() {
+        if (!isDragging && Math.abs(velocity) > 0.4) {
+          velocity *= 0.91;
+          tickOffset = (tickOffset + velocity / 45) % 16;
+          scrubberTicks.style.transform = `translateX(${tickOffset}px)`;
+          fractionalSec += velocity * 0.016;
+          if (Math.abs(fractionalSec) >= 1) {
+            const whole = Math.trunc(fractionalSec);
+            fractionalSec -= whole;
+            targetUnix += whole;
+            syncAll(true);
+          }
+        }
+        requestAnimationFrame(inertiaLoop);
+      }
+      requestAnimationFrame(inertiaLoop);
+
+      // Cursor Specular Highlights & Parallax Dot Grid
+      const cards = document.querySelectorAll(".card");
+      const dotGrid = document.getElementById("dot-grid");
+      window.addEventListener("pointermove", (e) => {
+        const nx = (e.clientX / window.innerWidth - 0.5) * -14;
+        const ny = (e.clientY / window.innerHeight - 0.5) * -14;
+        dotGrid.style.setProperty("--px", `${nx.toFixed(1)}px`);
+        dotGrid.style.setProperty("--py", `${ny.toFixed(1)}px`);
+
+        cards.forEach((card) => {
+          const r = card.getBoundingClientRect();
+          card.style.setProperty("--mx", `${e.clientX - r.left}px`);
+          card.style.setProperty("--my", `${e.clientY - r.top}px`);
+        });
+      });
+
+      // HTML5 Canvas Micro-Particle Copy Burst
+      const canvas = document.getElementById("particle-canvas");
+      const ctx = canvas.getContext("2d");
+      let particles = [];
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      function spawnBurst(x, y) {
+        const colors = ["#5865f2", "#23a55a", "#a5b4fc", "#4ade80"];
+        for (let i = 0; i < 16; i++) {
+          const angle = (Math.PI * 2 * i) / 16 + (Math.random() - 0.5) * 0.35;
+          const speed = 1.8 + Math.random() * 3.4;
+          particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1,
+            size: 2.5 + Math.random() * 2.5,
+            alpha: 1,
+            color: colors[i % colors.length],
+          });
+        }
+      }
+
+      function renderParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles = particles.filter((p) => p.alpha > 0.02);
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.12;
+          p.vx *= 0.96;
+          p.alpha *= 0.92;
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        }
+        ctx.globalAlpha = 1;
+        requestAnimationFrame(renderParticles);
+      }
+      requestAnimationFrame(renderParticles);
+
+      // Keyboard Shortcuts (1-8, N, D)
+      window.addEventListener("keydown", (e) => {
+        if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+        if (e.key >= "1" && e.key <= "8") {
+          copyFormat(Number(e.key) - 1);
+        } else if (e.key.toLowerCase() === "n") {
+          targetUnix = Math.floor(Date.now() / 1000);
+          syncAll(true);
+        } else if (e.key.toLowerCase() === "d") {
+          toggleDecoder();
+        }
+      });
+
+      // Live Clock & Relative Time Ticker
+      setInterval(() => {
+        const now = new Date();
+        liveClock.textContent = now.toLocaleTimeString([], { hour12: false });
+        document.getElementById("prev-R").textContent = renderFormattedValue(targetUnix, "R");
+        if (activeScene !== "custom" || customInput.value.includes("{R}")) {
+          renderDiscordPreview();
+        }
+      }, 1000);
+
+      // Initial Boot
+      liveClock.textContent = new Date().toLocaleTimeString([], { hour12: false });
+      syncAll(true);
+    })();
+  </script>
+</body>
+</html>
